@@ -41,3 +41,10 @@ After the starter apply, open the `portal_url` shown by OpenTofu.
 - Complete the work on a branch and finish with a pull request.
 
 See `docs/Week12_Individual_Exercise.docx` for the complete assignment.
+
+## Week 12 completion notes
+- Full stack: Docker network, Nginx status portal, PostgreSQL 18 (`postgres:18.6-alpine`) with a named volume, and Adminer 5.5.1, all managed by OpenTofu.
+- New variables: `adminer_port`, `postgres_db`, `postgres_user`, `postgres_password` (sensitive, no default; set it in your local, git-ignored `terraform.tfvars`).
+- Outputs: `portal_url`, `adminer_url`, `database_server` (use it as the Adminer "Server"), `postgres_volume`.
+- **postgres 18 note:** the volume is mounted at `/var/lib/postgresql`, not `/var/lib/postgresql/data`. Starting with 18, the official image stores data in `/var/lib/postgresql/18/docker` and exits if a volume is mounted at the legacy path.
+- Evidence screenshots are in `evidence/`; the reflection is in `REFLECTION.md`.

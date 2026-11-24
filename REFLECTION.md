@@ -1,0 +1,18 @@
+# Week 12 Reflection - Infrastructure as Code with OpenTofu
+
+## 1. Declarative vs. imperative infrastructure management
+Imperative management is a list of steps: `docker network create`, `docker run ...`, `docker volume create`, in the right order, and nothing tracks whether the steps were already done. Declarative management describes the end state I want: a network, a web container on port 8080, a database with a volume. OpenTofu works out the steps. When I ran the same configuration twice, the second plan was a no-op. When something drifted, the plan only proposed the missing piece. I never wrote the "how". I changed the "what", and OpenTofu found the difference.
+
+## 2. The role of OpenTofu state
+State (`terraform.tfstate`) maps each resource address in my code (for example `docker_container.db`) to a real object ID in Docker. Without it, OpenTofu could not tell "this container is mine and needs updating" from "this container needs creating", and it could not know what to remove on `tofu destroy`. During the drift test, OpenTofu refreshed state against Docker, found that the container ID recorded for `docker_container.db` no longer existed, and planned to create it again. `tofu state list` grew from 3 resources (starter) to 8 (full stack) and was empty after destroy.
+
+## 3. Why the PostgreSQL data survived removing the container
+The data lived in the named Docker volume `sdi4213-week12-pgdata`, a separate resource (`docker_volume.postgres_data`) with its own lifecycle. `docker rm -f` removed only the container. The volume stayed, as shown by `docker volume ls`. The recreated container mounted the same volume, so PostgreSQL found its existing data directory and the `milestone` row was still there. Containers are disposable compute. Volumes are durable storage.
+
+Side note: the postgres 18 image changed its data layout. It now expects the volume at `/var/lib/postgresql` and keeps data in `18/docker` under it. It refuses to start if a volume is mounted at the old `/var/lib/postgresql/data` path. My first apply crash-looped for this reason. I fixed the mount path in code, and `tofu plan` showed the change as a replacement of only the DB container.
+
+## 4. Why a sensitive variable can still be a security concern in local state
+`sensitive = true` only hides the value in CLI output. The plan showed `env = (sensitive value)`, and `tofu show` did not print the password. But the provider still needs the real value to create the container, so it is stored in plain text in `terraform.tfstate`. I checked: the password appears in the state file. Anyone with the state file has the secret. That is why `*.tfstate` and `terraform.tfvars` are git-ignored. In a team setting, state belongs in an encrypted, access-controlled remote backend (OpenTofu also supports state encryption), and the secret should come from a secrets manager.
+
+## 5. What `tofu plan` showed after changing `web_port`, and why reviewing it matters
+Changing `web_port` from 8080 to 8088 produced `docker_container.web must be replaced`, with `external = 8080 -> 8088 # forces replacement`. The result was `Plan: 1 to add, 0 to change, 1 to destroy`, and the `portal_url` output changed to `http://localhost:8088`. A port change sounds like an in-place edit, but Docker cannot change a running container's published ports, so OpenTofu destroys the container and recreates it, with brief downtime. Reviewing the plan exposes that destroy before it happens. If the same "small" change had forced replacement of the database container without a volume, data would be lost. The plan is where you catch that.

@@ -58,9 +58,12 @@ resource "docker_container" "db" {
     name = docker_network.lab.name
   }
 
+  # postgres 18+ images store data in a version-specific subdirectory
+  # (/var/lib/postgresql/18/docker) and refuse to start if a volume is mounted
+  # at the old /var/lib/postgresql/data path, so mount the parent directory.
   volumes {
     volume_name    = docker_volume.postgres_data.name
-    container_path = "/var/lib/postgresql/data"
+    container_path = "/var/lib/postgresql"
   }
 
   restart = "unless-stopped"

@@ -10,8 +10,26 @@ variable "web_port" {
   default     = 8080
 }
 
-# WEEK 12 TODO (Milestone 6): Add variables for:
-# - adminer_port (number; suggested default 8081)
-# - postgres_db (string; suggested value helpdesk)
-# - postgres_user (string; suggested value student)
-# - postgres_password (string; sensitive = true; NO default)
+variable "adminer_port" {
+  description = "Host port for the Adminer database UI."
+  type        = number
+  default     = 8081
+}
+
+variable "postgres_db" {
+  description = "Name of the PostgreSQL database created on first start."
+  type        = string
+  default     = "helpdesk"
+}
+
+variable "postgres_user" {
+  description = "PostgreSQL superuser name for the Help Desk database."
+  type        = string
+  default     = "student"
+}
+
+variable "postgres_password" {
+  description = "PostgreSQL password. Supply it in terraform.tfvars (git-ignored); there is intentionally no default."
+  type        = string
+  sensitive   = true
+}
